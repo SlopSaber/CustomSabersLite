@@ -12,6 +12,8 @@
         <EnableFrameworkPathOverride>true</EnableFrameworkPathOverride>
         <FrameworkPathOverride>$(BeatSaberDir)\Beat Saber_Data\Managed</FrameworkPathOverride>
         <MarkPackageReferencesAsExternallyResolved>false</MarkPackageReferencesAsExternallyResolved>
+        <SabersCorePath Condition="Exists('$(BeatSaberDir)\Plugins\SabersCore.dll')">$(BeatSaberDir)\Plugins\SabersCore.dll</SabersCorePath>
+        <SabersCorePath Condition="'$(SabersCorePath)' == '' AND Exists('D:\BSManager\BSInstances\1.44.0\Plugins\SabersCore.dll')">D:\BSManager\BSInstances\1.44.0\Plugins\SabersCore.dll</SabersCorePath>
     </PropertyGroup>
 
     <ItemGroup>
@@ -125,7 +127,7 @@
         </Reference>
         <Reference Include="SabersCore">
           <Private>false</Private>
-          <HintPath>$(BeatSaberDir)\Plugins\SabersCore.dll</HintPath>
+          <HintPath>$(SabersCorePath)</HintPath>
         </Reference>
         <Reference Include="SaberTrail" publicize="True">
           <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\SaberTrail.dll</HintPath>
