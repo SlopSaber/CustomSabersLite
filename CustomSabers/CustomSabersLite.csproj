@@ -57,6 +57,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Reference Include="BeatmapCore" HintPath="$(BeatSaberDir)\Beat Saber_Data\Managed\BeatmapCore.dll" Private="false" />
         <Reference Include="BeatSaber.GameSettings">
           <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatSaber.GameSettings.dll</HintPath>
           <Private>false</Private>

@@ -21,11 +21,16 @@ internal class LiteSaberModelController : SaberModelController, IColorable, IPre
     
     [Inject] private readonly ColorManager colorManager = null!;
     [Inject] private readonly GameplayCoreSceneSetupData gameplayCoreSceneSetupData = null!;
+    [Inject] private readonly BeatmapCallbacksController beatmapCallbacksController = null!;
     
     private ISaber? saberInstance;
+    private SaberType saberType;
     private CustomSaberTrail[] customTrailInstances = [];
     private Color color;
+    private BeatmapDataCallbackWrapper? colorBoostCallback;
+    private bool destroyed;
 
+    // Called by SiraUtil events
     public Color Color
     {
         get => color;
@@ -37,6 +42,7 @@ internal class LiteSaberModelController : SaberModelController, IColorable, IPre
         transform.SetParent(parent, false);
         transform.position = parent.position;
         transform.rotation = parent.rotation;
+        saberType = saber.saberType;
         
         CustomSaberInit(saber);
         return false;
@@ -45,6 +51,7 @@ internal class LiteSaberModelController : SaberModelController, IColorable, IPre
     private async void CustomSaberInit(Saber saber)
     {
         var sabers = await gameplaySaberProvider.GetSabers();
+        if (destroyed) return;
         saberInstance = sabers.GetSaberForType(saber.saberType);
         
         if (saberInstance is null)
@@ -83,13 +90,39 @@ internal class LiteSaberModelController : SaberModelController, IColorable, IPre
             config.OverrideTrailDuration,
             config.TrailDuration));
 
-        SetColor(colorManager.ColorForSaberType(saber.saberType));
+        color = colorManager.ColorForSaberType(saberType);
+        saberInstance.SetColor(colorManager._colorScheme);
+        foreach (var trail in customTrailInstances)
+        {
+            trail.SetColor(colorManager._colorScheme);
+        }
+
+        colorBoostCallback = beatmapCallbacksController.AddBeatmapCallback<ColorBoostBeatmapEventData>(HandleColorBoostEvent);
     }
 
+    private void OnDestroy()
+    {
+        destroyed = true;
+        if (colorBoostCallback != null)
+        {
+            beatmapCallbacksController.RemoveBeatmapCallback(colorBoostCallback);
+            colorBoostCallback = null;
+        }
+    }
+
+    private void HandleColorBoostEvent(ColorBoostBeatmapEventData eventData)
+    {
+        saberInstance?.UpdateBoostColors(colorManager._colorScheme, eventData.boostColorsAreOn);
+        foreach (var trail in customTrailInstances)
+        {
+            trail.UpdateBoostColors(colorManager._colorScheme, eventData.boostColorsAreOn);
+        }
+    }
+    
     public void SetColor(Color color)
     {
         this.color = color;
-        saberInstance?.SetColor(color);
-        customTrailInstances.ForEach(t => t.SetColor(color));
+        saberInstance?.SetColor(color, saberType);
+        foreach (var trail in customTrailInstances) trail.SetColor(color, saberType);
     }
 }
