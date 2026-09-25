@@ -16,7 +16,7 @@ internal class StaticPreviewTrail
     private readonly Mesh mesh = new();
     private readonly Vector3[] vertices = new Vector3[4];
     private readonly int[] triangles = [0, 3, 1, /**/ 0, 2, 3];
-    private readonly Vector2[] uvs = [new(1, 0), new(0, 0), new(1, 1), new(0, 1)];
+    private readonly Vector2[] uvs = [new(1, 1), new(0, 1), new(1, 0), new(0, 0)];
     private readonly Color[] colors = new Color[4];
 
     public StaticPreviewTrail(PluginConfig config)
@@ -110,6 +110,8 @@ internal class StaticPreviewTrail
         foreach (var material in meshRenderer.materials)
         {
             material.SetColor(MaterialProperties.Color, color);
+            if (material.GetTag("ElectroTrail", false, "0") == "1")
+                material.SetColor("_EmissionColor", color);
         }
         
         for (int i = 0; i < colors.Length; i++) colors[i] = color;
