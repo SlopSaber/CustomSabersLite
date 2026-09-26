@@ -53,9 +53,15 @@ internal class SaberPreviewManager
         
         Logger.Debug("Generating preview");
         
+        var nextSaberSet = await saberFactory.InstantiateCurrentSabers(token);
+        if (token.IsCancellationRequested)
+        {
+            nextSaberSet.Dispose();
+            token.ThrowIfCancellationRequested();
+        }
+
         saberSet?.Dispose();
-        saberSet = await saberFactory.InstantiateCurrentSabers(token);
-        token.ThrowIfCancellationRequested();
+        saberSet = nextSaberSet;
         
         menuSaberManager.ReplaceSabers(saberSet);
         staticPreviewManager.ReplaceSabers(saberSet);

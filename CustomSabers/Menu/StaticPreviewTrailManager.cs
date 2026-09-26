@@ -41,4 +41,10 @@ internal class StaticPreviewTrailManager
         leftTrail.UpdateColor(colorScheme);
         rightTrail.UpdateColor(colorScheme);
     }
+
+    public void Dispose()
+    {
+        leftTrail.Dispose();
+        rightTrail.Dispose();
+    }
 }

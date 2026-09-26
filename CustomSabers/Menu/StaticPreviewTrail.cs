@@ -30,6 +30,7 @@ internal class StaticPreviewTrail
     }
 
     private ITrailData? trailData;
+    private Material? material;
     private Color color;
 
     public void Init(Transform parent)
@@ -39,6 +40,13 @@ internal class StaticPreviewTrail
 
     public void ReplaceTrail(ITrailData? trailData)
     {
+        meshRenderer.sharedMaterial = null;
+        if (material != null)
+        {
+            Object.Destroy(material);
+            material = null;
+        }
+
         this.trailData = trailData;
 
         if (trailData is null)
@@ -48,7 +56,15 @@ internal class StaticPreviewTrail
         }
         
         meshRenderer.enabled = true;
-        meshRenderer.material = trailData.Material;
+        meshRenderer.sharedMaterial = trailData.Material;
+        material = meshRenderer.material;
+    }
+
+    public void Dispose()
+    {
+        meshRenderer.sharedMaterial = null;
+        if (material != null) Object.Destroy(material);
+        Object.Destroy(mesh);
     }
     
     public void UpdateMesh()
@@ -107,7 +123,7 @@ internal class StaticPreviewTrail
 
     private void UpdateColor(Color color)
     {
-        foreach (var material in meshRenderer.materials)
+        if (material != null)
         {
             material.SetColor(MaterialProperties.Color, color);
             if (material.GetTag("ElectroTrail", false, "0") == "1")

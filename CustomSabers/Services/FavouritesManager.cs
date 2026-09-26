@@ -22,6 +22,7 @@ internal class FavouritesManager : IInitializable
     }
 
     private CancellationTokenSource updateFavouritesTokenSource = new();
+    private readonly SemaphoreSlim saveLock = new(1, 1);
 
     public void Initialize() => ReadFavourites();
 
@@ -57,25 +58,34 @@ internal class FavouritesManager : IInitializable
     {
         updateFavouritesTokenSource.CancelThenDispose();
         updateFavouritesTokenSource = new();
+        var token = updateFavouritesTokenSource.Token;
+        var snapshot = new string[favouriteSaberHashes.Count];
+        favouriteSaberHashes.CopyTo(snapshot);
 
-        try
+        _ = Task.Run(async () =>
         {
-            Task.Run(() => SaveFavouritesAsync(updateFavouritesTokenSource.Token));
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception e)
-        {
-            Logger.Error($"Problem encountered while updating favourites file:\n{e}");
-        }
-        return;
-        
-        async Task SaveFavouritesAsync(CancellationToken token)
-        {
-            favouritesFile.Delete();
-            await using var streamWriter = favouritesFile.CreateText();
-            using var jsonWriter = new JsonTextWriter(streamWriter);
-            JsonSerializer.CreateDefault().Serialize(jsonWriter, favouriteSaberHashes);
-            await jsonWriter.FlushAsync(token);
-        }
+            try
+            {
+                await Task.Delay(150, token);
+                await saveLock.WaitAsync(token);
+                try
+                {
+                    token.ThrowIfCancellationRequested();
+                    await using var streamWriter = favouritesFile.CreateText();
+                    using var jsonWriter = new JsonTextWriter(streamWriter);
+                    JsonSerializer.CreateDefault().Serialize(jsonWriter, snapshot);
+                    await jsonWriter.FlushAsync(CancellationToken.None);
+                }
+                finally
+                {
+                    saveLock.Release();
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception e)
+            {
+                Logger.Error($"Problem encountered while updating favourites file:\n{e}");
+            }
+        });
     }
 }
