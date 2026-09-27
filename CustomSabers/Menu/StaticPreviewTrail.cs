@@ -62,9 +62,9 @@ internal class StaticPreviewTrail
 
     public void Dispose()
     {
-        meshRenderer.sharedMaterial = null;
+        if (meshRenderer != null) meshRenderer.sharedMaterial = null;
         if (material != null) Object.Destroy(material);
-        Object.Destroy(mesh);
+        if (mesh != null) Object.Destroy(mesh);
     }
     
     public void UpdateMesh()
