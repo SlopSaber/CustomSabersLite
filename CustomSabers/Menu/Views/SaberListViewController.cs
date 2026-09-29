@@ -45,6 +45,11 @@ internal class SaberListViewController : BSMLAutomaticViewController
 
     private CancellationTokenSource saberPreviewTokenSource = new();
     private SaberListType currentSaberList = SaberListType.Sabers;
+    private SaberValue? previewSaberValue;
+    private SaberValue? previewTrailValue;
+    private SaberValue? requestedPreviewSaberValue;
+    private SaberValue? requestedPreviewTrailValue;
+    private Task? previewTask;
 
     [UIAction("#post-parse")]
     public void PostParse()
@@ -231,7 +236,13 @@ internal class SaberListViewController : BSMLAutomaticViewController
 
     private void LoadingProgressChanged(MetadataLoaderProgress progress)
     {
-        if (progress.Completed) RefreshList();
+        if (progress.Completed)
+        {
+            saberListManager.RefreshMetadata();
+            previewSaberValue = null;
+            previewTrailValue = null;
+            RefreshList();
+        }
         loadingIcon.SetActive(!progress.Completed);
     }
 
@@ -240,10 +251,33 @@ internal class SaberListViewController : BSMLAutomaticViewController
         try
         {
             previewManager.SetPreviewActive(true);
+            var selectedSaber = config.CurrentlySelectedSaber;
+            var selectedTrail = config.CurrentlySelectedTrail;
+            if (previewSaberValue == selectedSaber && previewTrailValue == selectedTrail)
+            {
+                return;
+            }
+
+            if (previewTask is { IsCompleted: false }
+                && !saberPreviewTokenSource.IsCancellationRequested
+                && requestedPreviewSaberValue == selectedSaber
+                && requestedPreviewTrailValue == selectedTrail)
+            {
+                await previewTask;
+                return;
+            }
             
             saberPreviewTokenSource.CancelThenDispose();
             saberPreviewTokenSource = new();
-            await previewManager.GeneratePreview(saberPreviewTokenSource.Token);
+            previewSaberValue = null;
+            previewTrailValue = null;
+            requestedPreviewSaberValue = selectedSaber;
+            requestedPreviewTrailValue = selectedTrail;
+            var task = previewManager.GeneratePreview(saberPreviewTokenSource.Token);
+            previewTask = task;
+            await task;
+            previewSaberValue = selectedSaber;
+            previewTrailValue = selectedTrail;
         }
         catch (OperationCanceledException) { }
     }

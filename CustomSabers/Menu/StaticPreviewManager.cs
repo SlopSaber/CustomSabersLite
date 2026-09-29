@@ -41,6 +41,7 @@ internal class StaticPreviewManager : IInitializable, IDisposable
     
     public void Dispose()
     {
+        staticPreviewTrailManager.Dispose();
         if (parent != null) parent.Destroy();
     }
 

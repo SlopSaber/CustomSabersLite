@@ -39,7 +39,8 @@ internal class StaticPreviewTrail
     public void ReplaceTrail(ITrailData? trailData)
     {
         ClearPropertyBlock();
-        
+        color = Color.white;
+
         this.trailData = trailData;
 
         if (trailData is null)
@@ -50,6 +51,17 @@ internal class StaticPreviewTrail
         
         meshRenderer.enabled = true;
         meshRenderer.sharedMaterials = trailData.Materials;
+    }
+
+    public void Dispose()
+    {
+        if (meshRenderer != null)
+        {
+            ClearPropertyBlock();
+            meshRenderer.sharedMaterials = [];
+        }
+
+        if (mesh != null) Object.Destroy(mesh);
     }
     
     public void UpdateMesh()
@@ -87,23 +99,54 @@ internal class StaticPreviewTrail
         mesh.uv = uvs;
         mesh.triangles = triangles;
         mesh.RecalculateBounds();
-        
-        for (int i = 0; i < colors.Length; i++) colors[i] = color;
-        mesh.colors = colors;
+
+        UpdateVertexColors();
     }
 
-    public void SetColor(ColorScheme colorScheme)
+    public void SetColor(ColorScheme colorScheme, SaberType saberType)
     {
         color = Color.white;
         
         if (trailData is null) return;
-        
+
+        bool[] coloredMaterials = new bool[trailData.Materials.Length];
         foreach (var info in trailData.Colorizer.GetPropertiesWithColors(colorScheme))
         {
+            if (info.MaterialIndex < 0 || info.MaterialIndex >= coloredMaterials.Length) continue;
+            coloredMaterials[info.MaterialIndex] = true;
             if (info.ApplyToVertexColor) color = info.Color;
+            materialPropertyBlock.Clear();
+            meshRenderer.GetPropertyBlock(materialPropertyBlock, info.MaterialIndex);
             materialPropertyBlock.SetColor(info.PropertyName, info.Color);
+            if (info.Material != null && info.Material.GetTag("ElectroTrail", false, "0") == "1")
+            {
+                materialPropertyBlock.SetColor("_EmissionColor", info.Color);
+            }
             meshRenderer.SetPropertyBlock(materialPropertyBlock, info.MaterialIndex);
         }
+
+        Color fallbackColor = saberType == SaberType.SaberA ? colorScheme.saberAColor : colorScheme.saberBColor;
+        for (int i = 0; i < coloredMaterials.Length; i++)
+        {
+            Material material = trailData.Materials[i];
+            if (coloredMaterials[i] || material == null || material.GetTag("ElectroTrail", false, "0") != "1") continue;
+
+            color = fallbackColor;
+            materialPropertyBlock.Clear();
+            meshRenderer.GetPropertyBlock(materialPropertyBlock, i);
+            materialPropertyBlock.SetColor("_Color", fallbackColor);
+            materialPropertyBlock.SetColor("_EmissionColor", fallbackColor);
+            meshRenderer.SetPropertyBlock(materialPropertyBlock, i);
+        }
+
+        UpdateVertexColors();
+    }
+
+    private void UpdateVertexColors()
+    {
+        if (mesh == null) return;
+        for (int i = 0; i < colors.Length; i++) colors[i] = color;
+        mesh.colors = colors;
     }
 
     private void ClearPropertyBlock()

@@ -53,9 +53,15 @@ internal class SaberPreviewManager
         
         Logger.Debug("Generating preview");
         
+        var nextSaberSet = await saberFactory.InstantiateCurrentSabers(token);
+        if (token.IsCancellationRequested)
+        {
+            nextSaberSet.Dispose();
+            token.ThrowIfCancellationRequested();
+        }
+
         saberSet?.Dispose();
-        saberSet = await saberFactory.InstantiateCurrentSabers(token);
-        token.ThrowIfCancellationRequested();
+        saberSet = nextSaberSet;
         
         menuSaberManager.ReplaceSabers(saberSet);
         staticPreviewManager.ReplaceSabers(saberSet);
@@ -126,7 +132,8 @@ internal class SaberPreviewManager
     private void UpdateColor()
     {
         if (!previewActive) return;
-        var colorScheme = colorSchemesSettings.GetOverrideColorScheme();
+        var colorScheme = colorSchemesSettings.GetOverrideColorScheme()
+            ?? colorSchemesSettings.GetSelectedColorScheme();
         if (colorScheme is null) return;
         menuSaberManager.SetColor(colorScheme);
         staticPreviewManager.SetColor(colorScheme);

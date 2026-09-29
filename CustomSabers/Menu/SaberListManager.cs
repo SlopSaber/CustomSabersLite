@@ -25,6 +25,7 @@ internal class SaberListManager
     private readonly Dictionary<SaberValue, int> sortedListIndexMap = [];
     private readonly List<IListCellInfo> unsortedList = [];
     private readonly Dictionary<SaberValue, int> unsortedListIndexMap = [];
+    private CustomSaberMetadata[]? metadataSnapshot;
 
     private IListCellInfo[] SaberListDefaultChoices { get; } =
     [
@@ -56,9 +57,12 @@ internal class SaberListManager
 
     public void Refresh()
     {
+        metadataSnapshot = null;
         sortedList.Clear();
         OpenFolder(directoryManager.CustomSabers);
     }
+
+    public void RefreshMetadata() => metadataSnapshot = null;
 
     public IEnumerable<IListCellInfo> UpdateList(SaberListFilterOptions filterOptions) => 
         PopulateList(sortedList, sortedListIndexMap, filterOptions);
@@ -89,6 +93,7 @@ internal class SaberListManager
 
         saberMetadataCache.Remove(saberFile.Hash);
         prefabCache.UnloadPrefab(saberFile.Hash);
+        metadataSnapshot = null;
     }
 
     public bool TrySelectSorted(int row, [NotNullWhen(true)] out IListCellInfo? cell) =>
@@ -104,9 +109,9 @@ internal class SaberListManager
         : unsortedListIndexMap.GetValueOrDefault(new DefaultSaberValue(), 0);
 
     public bool CurrentListContains(SaberValue value) => 
-        sortedList.Any(cell => cell.TryGetSaberValue(out var cellValue) && cellValue == value);
+        sortedListIndexMap.ContainsKey(value);
     public bool UnsortedListContains(SaberValue value) =>
-        unsortedList.Any(cell => cell.TryGetSaberValue(out var cellValue) && cellValue == value);
+        unsortedListIndexMap.ContainsKey(value);
     
     private IEnumerable<IListCellInfo> PopulateList(
         List<IListCellInfo> list,
@@ -158,7 +163,7 @@ internal class SaberListManager
 
     private IEnumerable<CustomSaberMetadata> GetSortedData(SaberListFilterOptions options)
     {
-        var data = saberMetadataCache.GetRefreshedMetadata();
+        IEnumerable<CustomSaberMetadata> data = metadataSnapshot ??= saberMetadataCache.GetRefreshedMetadata().ToArray();
         
         if (options.Trails)
         {

@@ -38,7 +38,13 @@ internal class StaticPreviewTrailManager
 
     public void SetColor(ColorScheme colorScheme)
     {
-        leftTrail.SetColor(colorScheme);
-        rightTrail.SetColor(colorScheme);
+        leftTrail.SetColor(colorScheme, SaberType.SaberA);
+        rightTrail.SetColor(colorScheme, SaberType.SaberB);
+    }
+
+    public void Dispose()
+    {
+        leftTrail.Dispose();
+        rightTrail.Dispose();
     }
 }

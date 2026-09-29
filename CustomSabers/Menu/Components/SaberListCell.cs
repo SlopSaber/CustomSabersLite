@@ -26,11 +26,15 @@ internal class SaberListCell : TableCell
     
     public void SetInfo(IListCellInfo cellInfo)
     {
+        if (listCellInfo is ListInfoCellInfo previousInfoCell)
+        {
+            previousInfoCell.PropertyChanged -= CellInfoPropertyChanged;
+        }
+
         listCellInfo = cellInfo;
 
         if (cellInfo is ListInfoCellInfo infoCell)
         {
-            infoCell.PropertyChanged -= CellInfoPropertyChanged;
             infoCell.PropertyChanged += CellInfoPropertyChanged;
         }
         
