@@ -249,7 +249,7 @@ internal class SaberListViewController : BSMLAutomaticViewController
             if (saberListManager.CurrentListContains(SelectedSaberValue))
                 saberList.SelectCellWithIdx(saberListManager.IndexForSaberValue(SelectedSaberValue));
             else saberList.ClearSelection();
-            StartUnitySafeTask(GeneratePreview);
+            _ = StartUnitySafeTask(GeneratePreview);
             NotifyPropertyChanged(nameof(FavouriteButtonValue));
         }
         catch (OperationCanceledException) { }
