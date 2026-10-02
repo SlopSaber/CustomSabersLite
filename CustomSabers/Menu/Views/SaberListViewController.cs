@@ -50,6 +50,11 @@ internal class SaberListViewController : BSMLAutomaticViewController
     private SaberValue? requestedPreviewSaberValue;
     private SaberValue? requestedPreviewTrailValue;
     private Task? previewTask;
+    private long listRevision;
+    private bool destroyed;
+    private CancellationTokenSource? listTokenSource;
+    private bool deleting;
+    private bool viewRetired;
 
     [UIAction("#post-parse")]
     public void PostParse()
@@ -141,6 +146,7 @@ internal class SaberListViewController : BSMLAutomaticViewController
                && favouritesManager.IsFavourite(meta.SaberFile);
         set
         {
+            if (!favouritesManager.IsReady) return;
             if (!SelectedSaberValue.TryGetSaberHash(out var saberHash)
                 || !saberMetadataCache.TryGetMetadata(saberHash.Hash, out var meta)) return;
             
@@ -159,6 +165,7 @@ internal class SaberListViewController : BSMLAutomaticViewController
 
     public void DeleteButtonPressed()
     {
+        if (deleting) return;
         if (SelectedSaberValue.TryGetSaberHash(out var saberHash))
         {
             var meta = saberMetadataCache.GetOrDefault(saberHash.Hash);
@@ -172,22 +179,34 @@ internal class SaberListViewController : BSMLAutomaticViewController
         deleteSaberModal.Hide(true);
     }
 
-    public void DeleteConfirmPressed()
+    public async void DeleteConfirmPressed()
     {
         deleteSaberModal.Hide(true);
-        if (!SelectedSaberValue.TryGetSaberHash(out var deletedSaberHash)) return;
-        
+        if (deleting || !SelectedSaberValue.TryGetSaberHash(out var deletedSaberHash)) return;
+        deleting = true;
+        long revision = listRevision;
         int deletedSaberIndex = saberListManager.IndexForSaberValue(deletedSaberHash);
-        
-        saberListManager.DeleteSaber(deletedSaberHash.Hash);
-
-        if (saberListManager.TrySelectSorted(deletedSaberIndex - 1, out var cell) 
-            && cell.TryGetSaberValue(out var saberValue))
+        try
         {
-            SelectedSaberValue = saberValue;
+            await saberListManager.DeleteSaberAsync(deletedSaberHash.Hash);
+            await SwitchToUnity();
+            if (destroyed || viewRetired) return;
+            if (revision == listRevision && Equals(SelectedSaberValue, deletedSaberHash)
+                && saberListManager.TrySelectSorted(deletedSaberIndex - 1, out var cell)
+                && cell.TryGetSaberValue(out var saberValue)) SelectedSaberValue = saberValue;
+            RefreshList();
         }
-
-        RefreshList();
+        catch (OperationCanceledException) { }
+        catch (Exception e)
+        {
+            await SwitchToUnity();
+            if (!destroyed) Logger.Error($"Problem encountered while deleting saber:\n{e}");
+        }
+        finally
+        {
+            await SwitchToUnity();
+            deleting = false;
+        }
     }
 
     public void PreviewButtonPressed()
@@ -209,36 +228,48 @@ internal class SaberListViewController : BSMLAutomaticViewController
         await saberMetadataLoader.ReloadAsync();
     }
 
-    private void RefreshList()
+    private async void RefreshList()
     {
-        var filterOptions = new SaberListFilterOptions(
-            config.SearchFilter, 
-            config.OrderByFilter, 
-            config.ReverseSort, 
-            currentSaberList == SaberListType.Trails,
-            false);
-        
-        saberList.Data.Clear();
-        saberList.Data.AddRange(saberListManager.UpdateList(filterOptions));
-        saberList.ReloadData();
-
-        if (saberListManager.CurrentListContains(SelectedSaberValue))
+        if (destroyed || viewRetired) return;
+        var revision = ++listRevision;
+        listTokenSource?.Cancel();
+        var source = new CancellationTokenSource();
+        listTokenSource = source;
+        try
         {
-            saberList.SelectCellWithIdx(saberListManager.IndexForSaberValue(SelectedSaberValue));
+            var options = new SaberListFilterOptions(config.SearchFilter, config.OrderByFilter, config.ReverseSort,
+                currentSaberList == SaberListType.Trails, false);
+            var cells = await saberListManager.UpdateListAsync(options, source.Token);
+            await SwitchToUnity();
+            if (destroyed || viewRetired || revision != listRevision || source.IsCancellationRequested) return;
+            saberListManager.PublishSorted(cells);
+            saberList.Data.Clear();
+            saberList.Data.AddRange(cells);
+            saberList.ReloadData();
+            if (saberListManager.CurrentListContains(SelectedSaberValue))
+                saberList.SelectCellWithIdx(saberListManager.IndexForSaberValue(SelectedSaberValue));
+            else saberList.ClearSelection();
+            StartUnitySafeTask(GeneratePreview);
+            NotifyPropertyChanged(nameof(FavouriteButtonValue));
         }
-        else
+        catch (OperationCanceledException) { }
+        catch (Exception e)
         {
-            saberList.ClearSelection();
+            await SwitchToUnity();
+            if (!destroyed && revision == listRevision) Logger.Error($"Problem encountered while refreshing saber list:\n{e}");
         }
-
-        StartUnitySafeTask(GeneratePreview);
+        finally
+        {
+            await SwitchToUnity();
+            if (ReferenceEquals(listTokenSource, source)) listTokenSource = null;
+            source.Dispose();
+        }
     }
 
     private void LoadingProgressChanged(MetadataLoaderProgress progress)
     {
         if (progress.Completed)
         {
-            saberListManager.RefreshMetadata();
             previewSaberValue = null;
             previewTrailValue = null;
             RefreshList();
@@ -300,6 +331,7 @@ internal class SaberListViewController : BSMLAutomaticViewController
     protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
     {
         base.DidActivate(firstActivation, addedToHierarchy, screenSystemEnabling);
+        viewRetired = false;
 
         saberListManager.OpenFolder(directoryManager.CustomSabers);
         RefreshList();
@@ -310,12 +342,18 @@ internal class SaberListViewController : BSMLAutomaticViewController
     protected override void DidDeactivate(bool removedFromHierarchy, bool screenSystemDisabling)
     {
         base.DidDeactivate(removedFromHierarchy, screenSystemDisabling);
+        viewRetired = true;
+        ++listRevision;
+        listTokenSource?.Cancel();
         saberPreviewTokenSource.Cancel();
         previewManager.SetPreviewActive(false);
     }
 
     protected override void OnDestroy()
     {
+        destroyed = true;
+        ++listRevision;
+        listTokenSource?.Cancel();
         saberMetadataLoader.LoadingProgressChanged -= LoadingProgressChanged;
         saberPreviewTokenSource.Dispose();
         base.OnDestroy();

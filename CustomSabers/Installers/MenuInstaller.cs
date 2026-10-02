@@ -40,7 +40,7 @@ internal class MenuInstaller : Installer
         Container.BindInterfacesTo<MenuButtonManager>().AsSingle();
         Container.BindInterfacesAndSelfTo<SaberPreviewManager>().AsSingle();
         
-        Container.Bind<SaberListManager>().AsSingle();
+        Container.BindInterfacesAndSelfTo<SaberListManager>().AsSingle();
 
         Container.Bind<MenuSaberManager>().AsSingle();
         Container.Bind<MenuSaber>().WithId(SaberType.SaberA).AsCached();

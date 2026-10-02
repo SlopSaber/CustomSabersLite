@@ -1,40 +1,31 @@
 ﻿using System.IO;
 using IPA.Utilities;
-using Zenject;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using SabersCore.Services;
 
 namespace CustomSabersLite.Services;
 
-internal class DirectoryManager : IInitializable
+internal class DirectoryManager : IDisposable
 {
+    private readonly CancellationTokenSource cancellation = new();
     private readonly string customSabersPath = Path.Combine(UnityGame.InstallPath, "CustomSabers");
     private readonly string userDataPath = Path.Combine(UnityGame.UserDataPath, "Custom Sabers Lite");
 
-    public DirectoryManager()
+    public DirectoryManager(ISaberDirectoryReadiness readiness)
     {
         CustomSabers = new(customSabersPath);
         UserData = new(userDataPath);
-        DeletedSabers = UserData.CreateSubdirectory("Deleted Sabers");
+        DeletedSabers = new(Path.Combine(userDataPath, "Deleted Sabers"));
+        Ready = readiness.EnsureDirectoriesAsync([customSabersPath, userDataPath, DeletedSabers.FullName], cancellation.Token);
     }
     
     public DirectoryInfo CustomSabers { get; }
     public DirectoryInfo UserData { get; }
     public DirectoryInfo DeletedSabers { get; }
 
-    public void Initialize()
-    {
-        if (!CustomSabers.Exists)
-        {
-            CustomSabers.Create();
-        }
+    public Task Ready { get; }
 
-        if (!UserData.Exists)
-        {
-            UserData.Create();
-        }
-
-        if (!DeletedSabers.Exists)
-        {
-            DeletedSabers.Create();
-        }
-    }
+    public void Dispose() => cancellation.Cancel();
 }

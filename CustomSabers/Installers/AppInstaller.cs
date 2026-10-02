@@ -25,6 +25,7 @@ internal class AppInstaller : Installer
         Container.BindInterfacesAndSelfTo<GameResourcesProvider>().AsSingle();
         Container.BindInterfacesAndSelfTo<SaberFoldersManager>().AsSingle();
         Container.BindInterfacesAndSelfTo<DirectoryManager>().AsSingle();
+        Container.BindInterfacesAndSelfTo<SaberDeletionService>().AsSingle();
         
         // Cache
         Container.BindInterfacesAndSelfTo<FavouritesManager>().AsSingle();

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.ComponentModel;
+using System.Threading;
 using BeatSaberMarkupLanguage.Attributes;
 using CustomSabersLite.Configuration;
 using CustomSabersLite.Menu.Components;
@@ -10,6 +11,7 @@ using HMUI;
 using JetBrains.Annotations;
 using SabersCore.Services;
 using UnityEngine;
+using static CustomSabersLite.Utilities.Common.UnityAsync;
 
 namespace CustomSabersLite.Menu.Views;
 
@@ -20,6 +22,9 @@ internal class GameplaySetupTab : IDisposable, INotifyPropertyChanged, ISharedSa
     private readonly ISaberMetadataLoader saberMetadataLoader;
     private readonly ICoroutineStarter coroutineStarter;
     private readonly SaberListManager saberListManager;
+    private long listRevision;
+    private bool disposed;
+    private CancellationTokenSource? listTokenSource;
 
     [UIComponent("saber-list")] private readonly SaberListTableData saberList = null!;
 
@@ -132,24 +137,45 @@ internal class GameplaySetupTab : IDisposable, INotifyPropertyChanged, ISharedSa
         }
     }
 
-    private void RefreshList()
+    private async void RefreshList(bool scrollToSelection = false)
     {
-        saberList.Data.Clear();
-        saberList.Data.AddRange(saberListManager.UpdateUnsortedList());
-        saberList.ReloadData();
-
-        // todo: consider introducing trail selection to the tab 
-        if (saberListManager.UnsortedListContains(config.CurrentlySelectedSaber))
-            saberList.SelectCellWithIdx(saberListManager.IndexForSaberValueUnsorted(config.CurrentlySelectedSaber));
-        else
-            saberList.ClearSelection();
+        var revision = ++listRevision;
+        listTokenSource?.Cancel();
+        var source = new CancellationTokenSource();
+        listTokenSource = source;
+        try
+        {
+            var cells = await saberListManager.UpdateUnsortedListAsync(source.Token);
+            await SwitchToUnity();
+            if (disposed || revision != listRevision || source.IsCancellationRequested) return;
+            saberListManager.PublishUnsorted(cells);
+            saberList.Data.Clear();
+            saberList.Data.AddRange(cells);
+            saberList.ReloadData();
+            if (saberListManager.UnsortedListContains(config.CurrentlySelectedSaber))
+                saberList.SelectCellWithIdx(saberListManager.IndexForSaberValueUnsorted(config.CurrentlySelectedSaber));
+            else saberList.ClearSelection();
+            if (scrollToSelection)
+                coroutineStarter.StartSingleCoroutine(ref scrollToSelectedCellCoroutine, ScrollToSelectedCell());
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception e)
+        {
+            await SwitchToUnity();
+            if (!disposed && revision == listRevision) Logger.Error($"Problem encountered while refreshing saber list:\n{e}");
+        }
+        finally
+        {
+            await SwitchToUnity();
+            if (ReferenceEquals(listTokenSource, source)) listTokenSource = null;
+            source.Dispose();
+        }
     }
 
     private void Activated()
     {
         ISharedSaberSettings.PropertyNames.ForEach(NotifyPropertyChanged);
-        RefreshList();
-        coroutineStarter.StartSingleCoroutine(ref scrollToSelectedCellCoroutine, ScrollToSelectedCell());
+        RefreshList(true);
     }
     
     private IEnumerator ScrollToSelectedCell()
@@ -172,6 +198,9 @@ internal class GameplaySetupTab : IDisposable, INotifyPropertyChanged, ISharedSa
 
     public void Dispose()
     {
+        disposed = true;
+        ++listRevision;
+        listTokenSource?.Cancel();
         saberMetadataLoader.LoadingProgressChanged -= LoadingProgressChanged;
         if (saberList != null) saberList.DidActivate -= Activated;
     }
