@@ -2,6 +2,7 @@
 using CustomSabersLite.Utilities.Common;
 using CustomSabersLite.Utilities.Extensions;
 using SabersCore.Models;
+using SabersCore.Utilities.Common;
 using SabersCore.Utilities.Extensions;
 using UnityEngine;
 
@@ -85,8 +86,7 @@ internal class StaticPreviewTrail
         
         if (config.OverrideTrailWidth)
         {
-            float distance = Vector3.Distance(top, bot);
-            if (distance != 0) bot = Vector3.LerpUnclamped(top, bot, config.TrailWidth / distance);
+            TrailUtils.ApplyWidthMultiplier(trailData, config.TrailWidth, ref top, ref bot);
         }
         
         float length = config.OverrideTrailDuration ? config.TrailDuration * 0.4f 
