@@ -113,8 +113,10 @@ internal class SaberPreviewManager
         {
             if (saber is null) yield break;
             var transform = saber.GameObject.transform;
-            transform.parent = null;
             var (startPos, startRot) = (transform.position, transform.rotation);
+            // Keep the saber's own scale; the held anchor's world scale must not carry over to the static one.
+            transform.SetParent(null, false);
+            transform.SetPositionAndRotation(startPos, startRot);
             float t = 0f;
             while (t < 1f && !token.IsCancellationRequested)
             {
