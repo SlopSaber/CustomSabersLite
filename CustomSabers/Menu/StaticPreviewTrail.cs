@@ -17,7 +17,10 @@ internal class StaticPreviewTrail
     private readonly Mesh mesh = new();
     private readonly Vector3[] vertices = new Vector3[4];
     private readonly int[] triangles = [0, 3, 1, /**/ 0, 2, 3];
-    private readonly Vector2[] uvs = [new(1, 1), new(0, 1), new(1, 0), new(0, 0)];
+    // Blade vertices first, then the tail. Custom SDK materials put V=1 at the blade;
+    // the game's trail material and legacy .saber materials put V=0 there.
+    private static readonly Vector2[] AuthoredUvs = [new(1, 1), new(0, 1), new(1, 0), new(0, 0)];
+    private static readonly Vector2[] NativeUvs = [new(1, 0), new(0, 0), new(1, 1), new(0, 1)];
     private readonly Color[] colors = new Color[4];
 
     public StaticPreviewTrail(PluginConfig config)
@@ -102,7 +105,7 @@ internal class StaticPreviewTrail
         vertices[3] = top;
         
         mesh.vertices = vertices;
-        mesh.uv = uvs;
+        mesh.uv = trailData.UsesNativeUvDirection ? NativeUvs : AuthoredUvs;
         mesh.triangles = triangles;
         mesh.RecalculateBounds();
         
