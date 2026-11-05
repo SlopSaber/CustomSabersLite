@@ -55,5 +55,6 @@ internal class MenuSaberManager
         menuPointers.SetPointerVisibility(!active);
         leftSaber.SetActive(active);
         rightSaber.SetActive(active);
+        SaberSelection.SetHeldPreviewVisible(active);
     }
 }

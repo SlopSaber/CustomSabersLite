@@ -5,9 +5,28 @@ namespace CustomSabersLite.Configuration;
 
 internal class PluginConfig
 {
-    public bool Enabled { get; set; }
+    private bool enabled;
+    private SaberValue currentlySelectedSaber = new DefaultSaberValue();
 
-    public SaberValue CurrentlySelectedSaber { get; set; }
+    public bool Enabled
+    {
+        get => enabled;
+        set
+        {
+            enabled = value;
+            SaberSelection.Update(enabled, currentlySelectedSaber);
+        }
+    }
+
+    public SaberValue CurrentlySelectedSaber
+    {
+        get => currentlySelectedSaber;
+        set
+        {
+            currentlySelectedSaber = value;
+            SaberSelection.Update(enabled, currentlySelectedSaber);
+        }
+    }
     public SaberValue CurrentlySelectedTrail { get; set; }
     
     public bool DisableWhiteTrail { get; set; }
