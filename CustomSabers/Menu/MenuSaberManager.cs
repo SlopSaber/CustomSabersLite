@@ -52,7 +52,11 @@ internal class MenuSaberManager
 
     public void SetActive(bool active)
     {
-        menuPointers.SetPointerVisibility(!active);
+        // Other mods may hide the handles while no held preview is shown.
+        if (active != SaberSelection.HeldPreviewVisible)
+        {
+            menuPointers.SetPointerVisibility(!active);
+        }
         leftSaber.SetActive(active);
         rightSaber.SetActive(active);
         SaberSelection.SetHeldPreviewVisible(active);
