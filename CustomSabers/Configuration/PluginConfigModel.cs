@@ -27,5 +27,7 @@ internal class PluginConfigModel
         
     public bool EnableCustomEvents { get; set; } = true;
 
+    public bool EnableMenuPointers { get; set; } = false;
+
     public virtual void Changed() { }
 }

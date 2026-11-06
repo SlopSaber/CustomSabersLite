@@ -12,6 +12,17 @@ internal class SaberSettingsViewController : BSMLAutomaticViewController, IShare
 {
     [Inject] private readonly PluginConfig config = null!;
     [Inject] private readonly SaberPreviewManager previewManager = null!;
+    [Inject] private readonly MenuPointerSabers menuPointerSabers = null!;
+
+    public bool EnableMenuPointers
+    {
+        get => config.EnableMenuPointers;
+        set
+        {
+            config.EnableMenuPointers = value;
+            _ = menuPointerSabers.Reload();
+        }
+    }
     
     public bool Enabled
     {

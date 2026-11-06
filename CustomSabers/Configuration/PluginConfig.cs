@@ -45,6 +45,8 @@ internal class PluginConfig
         
     public bool EnableCustomEvents { get; set; }
 
+    public bool EnableMenuPointers { get; set; }
+
     // Don't serialize these
     public bool EnableMenuSabers { get; set; } = false;
     public OrderBy OrderByFilter { get; set; } = OrderBy.Name;
@@ -64,7 +66,8 @@ internal class PluginConfig
         pluginConfigModel.SaberLength,
         pluginConfigModel.OverrideSaberWidth,
         pluginConfigModel.SaberWidth,
-        pluginConfigModel.EnableCustomEvents);
+        pluginConfigModel.EnableCustomEvents,
+        pluginConfigModel.EnableMenuPointers);
 
     private PluginConfig(
         bool enabled,
@@ -79,7 +82,8 @@ internal class PluginConfig
         float saberLength,
         bool overrideSaberWidth,
         float saberWidth,
-        bool enableCustomEvents)
+        bool enableCustomEvents,
+        bool enableMenuPointers)
     {
         Enabled = enabled;
         CurrentlySelectedSaber = currentlySelectedSaber;
@@ -94,5 +98,6 @@ internal class PluginConfig
         OverrideSaberWidth = overrideSaberWidth;
         SaberWidth = saberWidth;
         EnableCustomEvents = enableCustomEvents;
+        EnableMenuPointers = enableMenuPointers;
     }
 }
